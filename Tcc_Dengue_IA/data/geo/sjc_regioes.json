@@ -1,0 +1,49 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Zona Leste", "cod_regiao": "ZL" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-45.8600, -23.1600], [-45.8200, -23.1700],
+          [-45.8300, -23.2100], [-45.8700, -23.1900], [-45.8600, -23.1600]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Zona Sul", "cod_regiao": "ZS" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-45.9100, -23.2100], [-45.8700, -23.2100],
+          [-45.8800, -23.2600], [-45.9200, -23.2500], [-45.9100, -23.2100]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Centro", "cod_regiao": "CT" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-45.8950, -23.1850], [-45.8700, -23.1850],
+          [-45.8750, -23.2050], [-45.8950, -23.2050], [-45.8950, -23.1850]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Zona Norte", "cod_regiao": "ZN" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-45.9100, -23.1300], [-45.8600, -23.1300],
+          [-45.8600, -23.1600], [-45.9100, -23.1600], [-45.9100, -23.1300]
+        ]]
+      }
+    }
+  ]
+}
