@@ -16,28 +16,31 @@ st.set_page_config(
     page_icon="🦟",
     layout="wide"
 )
-
 # ---------------------------------------------------------
 # Localização dos Caminhos do Projeto
 # ---------------------------------------------------------
-pasta_src = os.path.dirname(os.path.abspath(__file__))
-raiz_projeto = os.path.dirname(pasta_src)
+diretorio_atual = os.path.dirname(os.path.abspath(__file__))
 
+def obter_caminho_existente(rel_path):
+    caminho1 = os.path.join(diretorio_atual, rel_path)
+    caminho2 = os.path.join(os.path.dirname(diretorio_atual), rel_path)
+    if os.path.exists(caminho1):
+        return caminho1
+    return caminho2
 
 # ---------------------------------------------------------
 # Funções de Carregamento com Cache
 # ---------------------------------------------------------
 @st.cache_data
 def carregar_dados(codigo_ibge):
-    caminho = os.path.join(raiz_projeto, "data", "processed", f"dengue_clima_processado_{codigo_ibge}.csv")
+    caminho = obter_caminho_existente(os.path.join("data", "processed", f"dengue_clima_processado_{codigo_ibge}.csv"))
     if os.path.exists(caminho):
         return pd.read_csv(caminho)
     return None
 
-
 @st.cache_resource
 def carregar_modelo(codigo_ibge):
-    caminho = os.path.join(raiz_projeto, "models", f"modelo_dengue_{codigo_ibge}.pkl")
+    caminho = obter_caminho_existente(os.path.join("models", f"modelo_dengue_{codigo_ibge}.pkl"))
     if os.path.exists(caminho):
         return joblib.load(caminho)
     return None
@@ -124,121 +127,90 @@ else:
 
     st.markdown("---")
 
-    # 4. Mapeamento de Risco por Bairros Reais de SJC
-    st.subheader("🗺️ Mapeamento Espaço-Temporal de Risco por Bairro")
+# 4. Mapeamento de Risco por Regiões Epidemiológicas de SJC
+    st.subheader("🗺️ Mapeamento Espaço-Temporal de Risco por Região Epidemiológica")
+    st.markdown("Distribuição da previsão municipal entre os **Distritos Sanitários** de São José dos Campos com base no Índice Breteau (IB) Regional.")
 
-    df_bairros = pd.DataFrame([
-        {"bairro": "Jardim Satélite (Zona Sul)", "lat": -23.2320, "lon": -45.8860, "ib_larvario": 4.2,
-         "casos_previstos": 280, "risco": "EMERGÊNCIA", "cor": "red"},
-        {"bairro": "Eugênio de Melo (Zona Leste)", "lat": -23.1550, "lon": -45.7820, "ib_larvario": 4.8,
-         "casos_previstos": 320, "risco": "EMERGÊNCIA", "cor": "red"},
-        {"bairro": "Bosque dos Eucaliptos (Zona Sul)", "lat": -23.2500, "lon": -45.8890, "ib_larvario": 3.5,
-         "casos_previstos": 190, "risco": "ALERTA", "cor": "orange"},
-        {"bairro": "Vista Verde (Zona Leste)", "lat": -23.1810, "lon": -45.8350, "ib_larvario": 3.1,
-         "casos_previstos": 160, "risco": "ALERTA", "cor": "orange"},
-        {"bairro": "Santana (Zona Norte)", "lat": -23.1600, "lon": -45.8920, "ib_larvario": 2.1, "casos_previstos": 110,
-         "risco": "MÉDIO", "cor": "gold"},
-        {"bairro": "Centro", "lat": -23.1950, "lon": -45.8860, "ib_larvario": 1.2, "casos_previstos": 65,
-         "risco": "SATISFATÓRIO", "cor": "green"},
-        {"bairro": "Urbanova (Zona Oeste)", "lat": -23.2080, "lon": -45.9320, "ib_larvario": 0.8, "casos_previstos": 35,
-         "risco": "SATISFATÓRIO", "cor": "green"}
+    # Dados consolidados pelas Regiões Oficiais de SJC
+    df_regioes = pd.DataFrame([
+        {"regiao": "Zona Sul", "lat": -23.2450, "lon": -45.8920, "ib_larvario": 4.1, "bairros_chave": "Jd. Satélite, Bosque dos Eucaliptos, Campo dos Alemães"},
+        {"regiao": "Zona Leste", "lat": -23.1720, "lon": -45.8150, "ib_larvario": 4.5, "bairros_chave": "Eugênio de Melo, Vista Verde, Novo Horizonte"},
+        {"regiao": "Zona Sudeste", "lat": -23.2520, "lon": -45.8580, "ib_larvario": 3.6, "bairros_chave": "Putim, São Judas Tadeu"},
+        {"regiao": "Zona Norte", "lat": -23.1580, "lon": -45.8920, "ib_larvario": 2.2, "bairros_chave": "Santana, Alto da Ponte, Vila Paiva"},
+        {"regiao": "Centro", "lat": -23.1980, "lon": -45.8870, "ib_larvario": 1.1, "bairros_chave": "Centro, Jd. São Dimas, Vila Ema"},
+        {"regiao": "Zona Oeste", "lat": -23.2150, "lon": -45.9220, "ib_larvario": 0.9, "bairros_chave": "Urbanova, Jd. Aquárius, Jd. das Indústrias"}
     ])
+
+    # Classificação dinâmica de risco baseada nas diretrizes do Ministério da Saúde
+    def classificar_risco(ib):
+        if ib >= 4.0: return "CRÍTICO / EMERGÊNCIA", "#d62728"
+        elif ib >= 2.0: return "MÉDIO / ALERTA", "#ff7f0e"
+        elif ib >= 1.0: return "MODERADO", "#bcbd22"
+        else: return "SATISFATÓRIO", "#2ca02c"
+
+    df_regioes[['risco', 'cor']] = df_regioes.apply(
+        lambda row: pd.Series(classificar_risco(row['ib_larvario'])), axis=1
+    )
+
+    # Rateio proporcional da previsão da IA para cada região
+    soma_ib = df_regioes['ib_larvario'].sum()
+    df_regioes['casos_estimados'] = ((df_regioes['ib_larvario'] / soma_ib) * previsao_proxima).apply(lambda x: int(round(x)))
 
     col_map1, col_map2 = st.columns([3, 1])
 
     with col_map2:
         modo_mapa = st.radio(
             "Visualização do Mapa:",
-            ["🔥 Mapa de Calor (HeatMap)", "🎯 Radar por Bairro"],
+            ["🔥 Densidade de Risco (HeatMap)", "🎯 Raio de Impacto Regional"],
             index=0
         )
         st.markdown("---")
-        st.caption("💡 **Dica:** Passe o mouse sobre os pontos para inspecionar os detalhes de cada bairro.")
+        st.caption("💡 **Nota Científica:** A severidade é ponderada pela densidade vetorial (Índice Breteau) agregada por distrito sanitário.")
 
     with col_map1:
-        mapa = folium.Map(location=[-23.2000, -45.8700], zoom_start=12, tiles="cartodbpositron")
+        mapa = folium.Map(location=[-23.2100, -45.8750], zoom_start=11.5, tiles="cartodbpositron")
 
-        if modo_mapa == "🔥 Mapa de Calor (HeatMap)":
-            dados_calor = [[row['lat'], row['lon'], row['casos_previstos']] for _, row in df_bairros.iterrows()]
-            HeatMap(dados_calor, radius=40, blur=25, min_opacity=0.4).add_to(mapa)
+        if modo_mapa == "🔥 Densidade de Risco (HeatMap)":
+            dados_calor = [[row['lat'], row['lon'], row['casos_estimados']] for _, row in df_regioes.iterrows()]
+            HeatMap(dados_calor, radius=50, blur=30, min_opacity=0.4).add_to(mapa)
 
-            for _, row in df_bairros.iterrows():
+            for _, row in df_regioes.iterrows():
                 folium.CircleMarker(
                     location=[row['lat'], row['lon']],
-                    radius=6, color="black", weight=1, fill=True,
+                    radius=8, color="black", weight=1, fill=True,
                     fill_color=row['cor'], fill_opacity=0.9,
-                    tooltip=f"<b>{row['bairro']}</b><br>Casos Previstos: {row['casos_previstos']}<br>Risco: {row['risco']}"
+                    tooltip=f"<b>{row['regiao']}</b><br>Risco: {row['risco']}<br>Casos Estimados: {row['casos_estimados']}"
                 ).add_to(mapa)
         else:
-            for _, row in df_bairros.iterrows():
+            for _, row in df_regioes.iterrows():
                 folium.Circle(
                     location=[row['lat'], row['lon']],
-                    radius=row['casos_previstos'] * 4, color=row['cor'],
+                    radius=max(300, row['casos_estimados'] * 5), color=row['cor'],
                     fill=True, fill_color=row['cor'], fill_opacity=0.35,
                     popup=folium.Popup(f"""
-                        <div style='font-family: sans-serif; width: 170px;'>
-                            <h4 style='margin-bottom:5px;'>{row['bairro']}</h4>
-                            <b>Nível de Risco:</b> {row['risco']}<br>
-                            <b>Índice Breteau:</b> {row['ib_larvario']}<br>
-                            <b>Casos Previstos:</b> {row['casos_previstos']}
+                        <div style='font-family: sans-serif; width: 200px;'>
+                            <h4 style='margin-bottom:5px;'>{row['regiao']}</h4>
+                            <b>Status:</b> {row['risco']}<br>
+                            <b>Índice Breteau Regional:</b> {row['ib_larvario']}<br>
+                            <b>Casos Projetados:</b> {row['casos_estimados']}<br><br>
+                            <small><b>Principais Bairros:</b> {row['bairros_chave']}</small>
                         </div>
-                    """, max_width=220)
+                    """, max_width=240)
                 ).add_to(mapa)
 
         st_folium(mapa, width=900, height=480)
 
     st.markdown("---")
-
-    # 5. Simulador de Cenários Climáticos (What-If Analysis)
-    st.subheader("🧪 Simulador de Cenários Climáticos (Análise What-If)")
-    st.markdown(
-        "Ajuste as variáveis meteorológicas hipotéticas para observar a reação do modelo de Inteligência Artificial em tempo real:")
-
-    col_sim1, col_sim2 = st.columns([1, 2])
-
-    with col_sim1:
-        st.markdown("##### 🎛️ Parâmetros de Entrada")
-        delta_temp = st.slider("Variação de Temperatura (°C):", min_value=-3.0, max_value=5.0, value=0.0, step=0.5)
-        delta_umid = st.slider("Variação de Umidade Relativa (%):", min_value=-20.0, max_value=20.0, value=0.0,
-                               step=5.0)
-
-    # Lógica do Simulador: duplica a última linha e aplica os deltas
-    linha_simulada = df.iloc[[-1]].copy()
-
-    cols_temp = [c for c in ['tempmed', 'tempmed_lag2', 'tempmed_lag4'] if c in linha_simulada.columns]
-    cols_umid = [c for c in ['umidmed', 'umidmed_lag2', 'umidmed_lag4'] if c in linha_simulada.columns]
-
-    linha_simulada[cols_temp] += delta_temp
-    linha_simulada[cols_umid] += delta_umid
-
-    pred_simulada = max(0, round(modelo.predict(linha_simulada[colunas_existentes])[0]))
-    diferenca_casos = int(pred_simulada - previsao_proxima)
-
-    if previsao_proxima > 0:
-        perc_impacto = ((pred_simulada - previsao_proxima) / previsao_proxima) * 100
-    else:
-        perc_impacto = 0.0
-
-    with col_sim2:
-        st.markdown("##### 📊 Resultado da Projeção Simulada")
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Previsão Atual (Baseline)", f"{previsao_proxima} casos")
-        m2.metric("Previsão Simulada", f"{pred_simulada} casos", delta=f"{diferenca_casos:+d} casos")
-        m3.metric("Impacto % Estimado", f"{perc_impacto:+.1f}%")
-
-        if diferenca_casos > 0:
-            st.warning(
-                f"⚠️ **Alerta do Modelo:** As condições simuladas causam um aumento projetado de **{diferenca_casos} casos adicionais** (+{perc_impacto:.1f}%) na próxima semana.")
-        elif diferenca_casos < 0:
-            st.success(
-                f"📉 **Redução Projetada:** A alteração climática simulada reduz a transmissão em **{abs(diferenca_casos)} casos** ({perc_impacto:.1f}%).")
-        else:
-            st.info(
-                "ℹ️ **Cenário Neutro:** A variação selecionada não altera significativamente o patamar de casos previsto.")
-
-    st.markdown("---")
-    st.markdown("### 📋 Indicadores Larvários e Risco Epidemiológico por Bairro")
+    st.markdown("### 📋 Matriz Epidemiológica por Distrito Sanitário (Regiões de SJC)")
     st.dataframe(
-        df_bairros[['bairro', 'ib_larvario', 'casos_previstos', 'risco']],
+        df_regioes[['regiao', 'ib_larvario', 'casos_estimados', 'risco', 'bairros_chave']].rename(
+            columns={
+                'regiao': 'Região / Zona',
+                'ib_larvario': 'Índice Breteau (IB)',
+                'casos_estimados': 'Casos Projetados',
+                'risco': 'Classificação de Risco',
+                'bairros_chave': 'Bairros Abrangidos'
+            }
+        ),
         use_container_width=True
     )
