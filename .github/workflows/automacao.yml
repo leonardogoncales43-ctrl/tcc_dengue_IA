@@ -1,41 +1,36 @@
 name: Automação Preditiva de Dengue (Semanal)
 
-# 1. Quando o robô deve rodar?
 on:
   schedule:
-    # Roda toda Segunda-feira às 06:00 da manhã (Horário de Brasília / 09:00 UTC)
-    - cron: '0 9 * * 1'
-  workflow_dispatch: # Adiciona um botão no GitHub para você rodar manualmente quando quiser testar!
+    - cron: '0 9 * * 1' # Executa toda segunda-feira às 06:00 (Brasília)
+  workflow_dispatch:
 
-# 2. O que o robô deve fazer?
 jobs:
   atualizar-dados-e-modelo:
-    runs-on: ubuntu-latest # Usa um servidor Linux do GitHub
-    
+    runs-on: ubuntu-latest
+
     steps:
       - name: Baixar código do repositório
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configurar Python 3.10
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Instalar bibliotecas
+      - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Executar Rotina de Dados e Treinamento
+      - name: Executar Pipeline de Treinamento
         run: |
-          # Aqui entram os scripts Python que atualizam os dados e o modelo
-          # Exemplo:
-          python Tcc_Dengue_IA/Treinamento.py
-          
-      - name: Salvar e Enviar para o GitHub (Commit Automático)
+          python Tcc_Dengue_IA/src/Treinamento.py || python Tcc_Dengue_IA/Treinamento.py
+
+      - name: Salvar alterações no GitHub
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
           git add .
-          git commit -m "bot: atualização automática semanal dos dados e modelo" || echo "Nenhuma mudança para commitar"
+          git commit -m "bot: atualização automática semanal de dados e modelo" || echo "Sem alterações para commit"
           git push
