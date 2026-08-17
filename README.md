@@ -1,52 +1,48 @@
-# 🦟 Sistema Preditivo de Dengue (TCC) - São José dos Campos / SP
+# Sistema Preditivo de Dengue (TCC) – São José dos Campos/SP
 
-Este repositório contém o código-fonte do Trabalho de Conclusão de Curso focado na criação de um pipeline automatizado (MLOps) para a **previsão de casos de Dengue** na cidade de São José dos Campos, SP.
+Este repositório contém o código-fonte do Trabalho de Conclusão de Curso (TCC) voltado ao desenvolvimento de um Sistema Preditivo e de Monitoramento Epidemiológico da Dengue para o município de São José dos Campos/SP.
 
-O sistema utiliza técnicas de **Machine Learning** e integra dados climáticos e epidemiológicos em tempo real para gerar alertas precoces, auxiliando na tomada de decisão em saúde pública.
-
----
-
-## ⚙️ Arquitetura do Sistema e Funcionalidades
-
-O projeto foi construído para ser 100% autônomo, rodando em um ciclo completo de ponta a ponta:
-
-* **Coleta de Dados Climáticos:** Integração com a API do *Open-Meteo* para capturar dados meteorológicos atuais (temperatura e umidade).
-* **Coleta de Dados Epidemiológicos:** Conexão com a API do *InfoDengue* (Fiocruz/FGV) para extrair o boletim de casos notificados nas últimas semanas.
-* **Engenharia de Recursos (Feature Engineering):** Cálculo automático de defasagens temporais (*lags* de 1, 2 e 4 semanas) que simulam o ciclo de vida do mosquito e o período de incubação do vírus.
-* **Inteligência Artificial:** O vetor de dados é processado por um modelo preditivo treinado previamente que estima o número de casos para a próxima semana.
-* **Dashboard Interativo:** Uma interface visual construída para que usuários e gestores possam consumir os dados e visualizar os alertas epidemiológicos de forma intuitiva.
+A solução utiliza uma arquitetura MLOps automatizada responsável por coletar dados climáticos e epidemiológicos atualizados, treinar modelos de Aprendizado de Máquina periodicamente e disponibilizar previsões em tempo real por meio de um painel interativo.
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## Demonstração On-line
 
-* **Linguagem:** Python
-* **Manipulação de Dados:** Pandas, NumPy
-* **Machine Learning:** Scikit-Learn, Joblib
-* **Consumo de APIs:** `requests` (Open-Meteo e InfoDengue)
-* **Interface Visual / Deploy:** Streamlit
-* **Controle de Versão:** Git e GitHub
+O dashboard interativo em produção pode ser acessado no seguinte endereço:  
+https://tccdengueia-jps7kuph2rjlzfktkog9kc.streamlit.app
 
 ---
 
-## 🚀 Como executar este projeto localmente
+## Principais Funcionalidades
 
-Caso queira clonar este repositório e rodar em sua própria máquina, abra o seu terminal e siga os passos abaixo:
-
-**1. Clone o repositório:**
-> git clone https://github.com/leonardogoncales43-ctrl/tcc_dengue_IA.git
-
-**2. Acesse a pasta do projeto:**
-> cd tcc_dengue_IA/Tcc_Dengue_IA
-
-**3. Instale as dependências (requer Python instalado):**
-> pip install pandas numpy scikit-learn requests streamlit joblib
-
-**4. Execute o simulador em tempo real:**
-> python src/previsao_real.py
-
-**5. Inicie o Dashboard Web:**
-> streamlit run app.py
+- Previsão Epidemiológica: Modelos de Machine Learning treinados com dados de temperatura, umidade e histórico de notificações.
+- Mapeamento Georreferenciado: Mapas de calor e divisões de risco interativas desenvolvidas com Folium e Streamlit-Folium.
+- Dashboards Interativos: Gráficos dinâmicos de tendência e análise de cenários climáticos desenvolvidos em Plotly.
+- Pipeline MLOps Automatizado: Atualização semanal dos dados e re-treinamento do modelo sem intervenção humana via GitHub Actions.
 
 ---
-*Projeto desenvolvido por Leonardo Gonçalves como requisito de Trabalho de Conclusão de Curso.*
+
+## Tecnologias e Bibliotecas
+
+- Linguagem: Python 3.10+
+- Dashboard e Interface: Streamlit
+- Visualização e Geoprocessamento: Folium, Streamlit-Folium, Plotly
+- Machine Learning e Análise de Dados: Pandas, NumPy, Scikit-Learn, Joblib
+- Automação e Deploy: GitHub Actions, Streamlit Cloud
+
+---
+
+## Estrutura do Repositório
+
+```text
+tcc_dengue_IA/
+├── .github/
+│   └── workflows/
+│       └── automacao.yml       # Pipeline CI/CD MLOps semanal (GitHub Actions)
+├── Tcc_Dengue_IA/
+│   └── src/
+│       ├── app.py              # Interface e Dashboard Streamlit
+│       └── Treinamento.py      # Script de ingestão, tratamento e treinamento da IA
+├── .gitignore                  # Arquivos ignorados pelo Git
+├── README.md                   # Documentação do repositório
+└── requirements.txt            # Dependências do projeto
