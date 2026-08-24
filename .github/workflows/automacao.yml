@@ -23,11 +23,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Executar Pipeline de Treinamento
+     - name: Executar Pipeline de Treinamento
         run: |
-          python Tcc_Dengue_IA/src/NomeDoArquivoDeColeta.py
-          python Tcc_Dengue_IA/src/NomeDoArquivoDeProcessamento.py
-          python Tcc_Dengue_IA/src/Treinamento.py python Tcc_Dengue_IA/src/Treinamento.py || python Tcc_Dengue_IA/Treinamento.py
+          python Tcc_Dengue_IA/src/coleta_dados.py
+          python Tcc_Dengue_IA/src/processamento.py
+          python Tcc_Dengue_IA/src/Treinamento.py
 
       - name: Salvar alterações no GitHub
         run: |
