@@ -38,7 +38,7 @@ def carregar_dados(codigo_ibge):
         return pd.read_csv(caminho)
     return None
 
-@@st.cache_resource(ttl=3600)
+@st.cache_resource(ttl=3600)
 def carregar_modelo(codigo_ibge):
     caminho = obter_caminho_existente(os.path.join("models", f"modelo_dengue_{codigo_ibge}.pkl"))
     if os.path.exists(caminho):
