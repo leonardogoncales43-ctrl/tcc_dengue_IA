@@ -45,7 +45,7 @@ def baixar_dados_dengue(codigo_ibge=3549904, ano_inicio=2020, ano_fim=2026):
         pasta_src = os.path.dirname(os.path.abspath(__file__))
         raiz_projeto = os.path.dirname(pasta_src)
         pasta_destino = os.path.join(raiz_projeto, "data", "raw")
-        os.makedirs(pasta_destino, exist_ok=True))
+        os.makedirs(pasta_destino, exist_ok=True)
 
         caminho_arquivo = os.path.join(pasta_destino, f"dengue_clima_{codigo_ibge}.csv")
         df_filtrado.to_csv(caminho_arquivo, index=False, encoding="utf-8")
