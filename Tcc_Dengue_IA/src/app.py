@@ -31,14 +31,14 @@ def obter_caminho_existente(rel_path):
 # ---------------------------------------------------------
 # Funções de Carregamento com Cache
 # ---------------------------------------------------------
-@st.cache_data
+@st.cache_data(ttl=3600)
 def carregar_dados(codigo_ibge):
     caminho = obter_caminho_existente(os.path.join("data", "processed", f"dengue_clima_processado_{codigo_ibge}.csv"))
     if os.path.exists(caminho):
         return pd.read_csv(caminho)
     return None
 
-@st.cache_resource
+@@st.cache_resource(ttl=3600)
 def carregar_modelo(codigo_ibge):
     caminho = obter_caminho_existente(os.path.join("models", f"modelo_dengue_{codigo_ibge}.pkl"))
     if os.path.exists(caminho):
