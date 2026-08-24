@@ -25,7 +25,9 @@ jobs:
 
       - name: Executar Pipeline de Treinamento
         run: |
-          python Tcc_Dengue_IA/src/Treinamento.py || python Tcc_Dengue_IA/Treinamento.py
+          python Tcc_Dengue_IA/src/NomeDoArquivoDeColeta.py
+          python Tcc_Dengue_IA/src/NomeDoArquivoDeProcessamento.py
+          python Tcc_Dengue_IA/src/Treinamento.py python Tcc_Dengue_IA/src/Treinamento.py || python Tcc_Dengue_IA/Treinamento.py
 
       - name: Salvar alterações no GitHub
         run: |
