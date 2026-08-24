@@ -28,42 +28,50 @@ def obter_caminho_existente(rel_path):
         return caminho1
     return caminho2
 
-# ---------------------------------------------------------
-# Funções de Carregamento com Cache
-# ---------------------------------------------------------
-@st.cache_data(ttl=3600)
-def carregar_dados(codigo_ibge):
-    caminho = obter_caminho_existente(os.path.join("data", "processed", f"dengue_clima_processado_{codigo_ibge}.csv"))
-    if os.path.exists(caminho):
-        return pd.read_csv(caminho)
-    return None
+# 1. Previsão da IA (Forecasting para a Próxima Semana)
+    colunas_features = [
+        'casos_lag1', 'casos_lag2',
+        'tempmed', 'tempmed_lag2', 'tempmed_lag4',
+        'umidmed', 'umidmed_lag2', 'umidmed_lag4'
+    ]
+    colunas_existentes = [c for c in colunas_features if c in df.columns]
 
-@st.cache_resource(ttl=3600)
-def carregar_modelo(codigo_ibge):
-    caminho = obter_caminho_existente(os.path.join("models", f"modelo_dengue_{codigo_ibge}.pkl"))
-    if os.path.exists(caminho):
-        return joblib.load(caminho)
-    return None
+    # Ajusta o histórico passado no gráfico
+    df['previsao_IA'] = modelo.predict(df[colunas_existentes])
+    df['previsao_IA'] = df['previsao_IA'].apply(lambda x: max(0, round(x)))
 
+    # Extrai a última semana real para projetar a seguinte
+    ultima_semana = df.iloc[-1]
+    se_atual = int(ultima_semana['SE'])
+    proxima_se = se_atual + 1 if (se_atual % 100) < 52 else ((se_atual // 100) + 1) * 100 + 1
 
-# ---------------------------------------------------------
-# Barra Lateral (Menu)
-# ---------------------------------------------------------
-st.sidebar.title("🛡️ Vigilância Epidemiológica")
-st.sidebar.markdown("---")
+    # Monta as variáveis (features) deslocadas para a próxima semana
+    dados_futuro = {
+        'casos_lag1': ultima_semana['casos'],
+        'casos_lag2': df.iloc[-2]['casos'] if len(df) > 1 else ultima_semana['casos'],
+        'tempmed': ultima_semana['tempmed'],
+        'tempmed_lag2': df.iloc[-2]['tempmed'] if len(df) > 1 else ultima_semana['tempmed'],
+        'tempmed_lag4': df.iloc[-4]['tempmed'] if len(df) > 3 else ultima_semana['tempmed'],
+        'umidmed': ultima_semana['umidmed'],
+        'umidmed_lag2': df.iloc[-2]['umidmed'] if len(df) > 1 else ultima_semana['umidmed'],
+        'umidmed_lag4': df.iloc[-4]['umidmed'] if len(df) > 3 else ultima_semana['umidmed']
+    }
 
-municipios = {
-    "São José dos Campos (3549904)": 3549904,
-}
+    # Previsão exclusiva para a semana seguinte (Semana 33)
+    df_futuro = pd.DataFrame([dados_futuro])
+    previsao_futura_raw = modelo.predict(df_futuro[colunas_existentes])[0]
+    previsao_proxima = max(0, int(round(previsao_futura_raw)))
+    
+    casos_atuais = int(ultima_semana['casos'])
+    variacao = previsao_proxima - casos_atuais
 
-cidade_selecionada = st.sidebar.selectbox("Selecione o Município:", list(municipios.keys()))
-codigo_ibge = municipios[cidade_selecionada]
-
-df = carregar_dados(codigo_ibge)
-modelo = carregar_modelo(codigo_ibge)
-
-# ---------------------------------------------------------
-# Corpo do Portal
+    # Adiciona o ponto futuro no gráfico sem alterar os casos reais
+    linha_grafico_futuro = pd.DataFrame({
+        'SE': [proxima_se],
+        'casos': [None],
+        'previsao_IA': [previsao_proxima]
+    })
+    df = pd.concat([df, linha_grafico_futuro], ignore_index=True)
 # ---------------------------------------------------------
 st.title("🌐 Portal Preditivo de Tendência da Dengue")
 st.markdown(f"**Sistema de Suporte à Decisão em Saúde Pública — Código IBGE: {codigo_ibge}**")
