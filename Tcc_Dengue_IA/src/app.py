@@ -16,6 +16,7 @@ st.set_page_config(
     page_icon="🦟",
     layout="wide"
 )
+
 # ---------------------------------------------------------
 # Localização dos Caminhos do Projeto
 # ---------------------------------------------------------
@@ -28,7 +29,50 @@ def obter_caminho_existente(rel_path):
         return caminho1
     return caminho2
 
-# 1. Previsão da IA (Forecasting para a Próxima Semana)
+# ---------------------------------------------------------
+# Funções de Carregamento com Cache
+# ---------------------------------------------------------
+@st.cache_data(ttl=3600)
+def carregar_dados(codigo_ibge):
+    caminho = obter_caminho_existente(os.path.join("data", "processed", f"dengue_clima_processado_{codigo_ibge}.csv"))
+    if os.path.exists(caminho):
+        return pd.read_csv(caminho)
+    return None
+
+@st.cache_resource(ttl=3600)
+def carregar_modelo(codigo_ibge):
+    caminho = obter_caminho_existente(os.path.join("models", f"modelo_dengue_{codigo_ibge}.pkl"))
+    if os.path.exists(caminho):
+        return joblib.load(caminho)
+    return None
+
+# ---------------------------------------------------------
+# Barra Lateral (Menu)
+# ---------------------------------------------------------
+st.sidebar.title("🛡️ Vigilância Epidemiológica")
+st.sidebar.markdown("---")
+
+municipios = {
+    "São José dos Campos (3549904)": 3549904,
+}
+
+cidade_selecionada = st.sidebar.selectbox("Selecione o Município:", list(municipios.keys()))
+codigo_ibge = municipios[cidade_selecionada]
+
+df = carregar_dados(codigo_ibge)
+modelo = carregar_modelo(codigo_ibge)
+
+# ---------------------------------------------------------
+# Corpo do Portal
+# ---------------------------------------------------------
+st.title("🌐 Portal Preditivo de Tendência da Dengue")
+st.markdown(f"**Sistema de Suporte à Decisão em Saúde Pública — Código IBGE: {codigo_ibge}**")
+st.markdown("---")
+
+if df is None or modelo is None:
+    st.error("❌ Dados ou modelo preditivo não encontrados.")
+else:
+    # 1. Previsão da IA (Forecasting para a Próxima Semana)
     colunas_features = [
         'casos_lag1', 'casos_lag2',
         'tempmed', 'tempmed_lag2', 'tempmed_lag4',
@@ -57,7 +101,7 @@ def obter_caminho_existente(rel_path):
         'umidmed_lag4': df.iloc[-4]['umidmed'] if len(df) > 3 else ultima_semana['umidmed']
     }
 
-    # Previsão exclusiva para a semana seguinte (Semana 33)
+    # Previsão exclusiva para a semana seguinte
     df_futuro = pd.DataFrame([dados_futuro])
     previsao_futura_raw = modelo.predict(df_futuro[colunas_existentes])[0]
     previsao_proxima = max(0, int(round(previsao_futura_raw)))
@@ -72,29 +116,6 @@ def obter_caminho_existente(rel_path):
         'previsao_IA': [previsao_proxima]
     })
     df = pd.concat([df, linha_grafico_futuro], ignore_index=True)
-# ---------------------------------------------------------
-st.title("🌐 Portal Preditivo de Tendência da Dengue")
-st.markdown(f"**Sistema de Suporte à Decisão em Saúde Pública — Código IBGE: {codigo_ibge}**")
-st.markdown("---")
-
-if df is None or modelo is None:
-    st.error("❌ Dados ou modelo preditivo não encontrados.")
-else:
-    # 1. Previsão da IA (Baseline)
-    colunas_features = [
-        'casos_lag1', 'casos_lag2',
-        'tempmed', 'tempmed_lag2', 'tempmed_lag4',
-        'umidmed', 'umidmed_lag2', 'umidmed_lag4'
-    ]
-    colunas_existentes = [c for c in colunas_features if c in df.columns]
-
-    df['previsao_IA'] = modelo.predict(df[colunas_existentes])
-    df['previsao_IA'] = df['previsao_IA'].apply(lambda x: max(0, round(x)))
-
-    ultima_semana = df.iloc[-1]
-    casos_atuais = int(ultima_semana['casos'])
-    previsao_proxima = int(ultima_semana['previsao_IA'])
-    variacao = previsao_proxima - casos_atuais
 
     if previsao_proxima > 500:
         status_alerta = "🚨 ALERTA DE SURTO"
@@ -108,7 +129,7 @@ else:
 
     # 2. Painel de Métricas Rápidas
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Semana Epidemiológica", str(ultima_semana['SE']))
+    c1.metric("Semana Epidemiológica", str(se_atual))
     c2.metric("Casos Reais Notificados", f"{casos_atuais} casos")
     c3.metric("Previsão IA (Próx. Semana)", f"{previsao_proxima} casos", delta=f"{variacao} casos")
     c4.markdown(f"**Status Operacional:**\n### :{cor_alerta}[{status_alerta}]")
@@ -129,17 +150,15 @@ else:
         x=df_grafico['SE'].astype(str), y=df_grafico['previsao_IA'],
         mode='lines+markers', name='Previsão da IA', line=dict(color='#d62728', width=3, dash='dash')
     ))
-    fig.update_layout(xaxis_title="Semana Epidemiológica", yaxis_title="Número de Casos", template="plotly_white",
-                      height=450)
+    fig.update_layout(xaxis_title="Semana Epidemiológica", yaxis_title="Número de Casos", template="plotly_white", height=450)
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
 
-# 4. Mapeamento de Risco por Regiões Epidemiológicas de SJC
+    # 4. Mapeamento de Risco por Regiões Epidemiológicas de SJC
     st.subheader("🗺️ Mapeamento Espaço-Temporal de Risco por Região Epidemiológica")
     st.markdown("Distribuição da previsão municipal entre os **Distritos Sanitários** de São José dos Campos com base no Índice Breteau (IB) Regional.")
 
-    # Dados consolidados pelas Regiões Oficiais de SJC
     df_regioes = pd.DataFrame([
         {"regiao": "Zona Sul", "lat": -23.2450, "lon": -45.8920, "ib_larvario": 4.1, "bairros_chave": "Jd. Satélite, Bosque dos Eucaliptos, Campo dos Alemães"},
         {"regiao": "Zona Leste", "lat": -23.1720, "lon": -45.8150, "ib_larvario": 4.5, "bairros_chave": "Eugênio de Melo, Vista Verde, Novo Horizonte"},
@@ -149,7 +168,6 @@ else:
         {"regiao": "Zona Oeste", "lat": -23.2150, "lon": -45.9220, "ib_larvario": 0.9, "bairros_chave": "Urbanova, Jd. Aquárius, Jd. das Indústrias"}
     ])
 
-    # Classificação dinâmica de risco baseada nas diretrizes do Ministério da Saúde
     def classificar_risco(ib):
         if ib >= 4.0: return "CRÍTICO / EMERGÊNCIA", "#d62728"
         elif ib >= 2.0: return "MÉDIO / ALERTA", "#ff7f0e"
@@ -160,7 +178,6 @@ else:
         lambda row: pd.Series(classificar_risco(row['ib_larvario'])), axis=1
     )
 
-    # Rateio proporcional da previsão da IA para cada região
     soma_ib = df_regioes['ib_larvario'].sum()
     df_regioes['casos_estimados'] = ((df_regioes['ib_larvario'] / soma_ib) * previsao_proxima).apply(lambda x: int(round(x)))
 
