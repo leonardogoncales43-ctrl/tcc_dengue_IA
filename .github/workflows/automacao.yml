@@ -1,10 +1,10 @@
 name: Automação Preditiva de Dengue (Semanal)
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 9 * * 1' # Executa toda segunda-feira às 06:00 (Brasília)
-  workflow_dispatch:
-
+  
 jobs:
   atualizar-dados-e-modelo:
     runs-on: ubuntu-latest
@@ -22,8 +22,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-     - name: Executar Pipeline de Treinamento
+      - name: Executar Pipeline de Treinamento
         run: |
           python Tcc_Dengue_IA/src/coleta_dados.py
           python Tcc_Dengue_IA/src/processamento.py
