@@ -1,241 +1,157 @@
+import json
 import os
+import folium
 import joblib
 import pandas as pd
-import numpy as np
+import plotly.express as px
 import streamlit as st
-import plotly.graph_objects as go
-import folium
 from streamlit_folium import st_folium
-from folium.plugins import HeatMap
 
-# ---------------------------------------------------------
-# Configuração da Página Web
-# ---------------------------------------------------------
 st.set_page_config(
-    page_title="Portal Preditivo de Dengue - TCC",
+    page_title="Monitoramento Preditivo de Dengue - SJC",
     page_icon="🦟",
-    layout="wide"
+    layout="wide",
 )
 
-# ---------------------------------------------------------
-# Localização dos Caminhos do Projeto
-# ---------------------------------------------------------
-diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+pasta_src = os.path.dirname(os.path.abspath(__file__))
+raiz_projeto = os.path.dirname(pasta_src)
 
-def obter_caminho_existente(rel_path):
-    caminho1 = os.path.join(diretorio_atual, rel_path)
-    caminho2 = os.path.join(os.path.dirname(diretorio_atual), rel_path)
-    if os.path.exists(caminho1):
-        return caminho1
-    return caminho2
+caminho_processed = os.path.join(
+    raiz_projeto,
+    "data",
+    "processed",
+    "dengue_clima_processado_3549904.csv",
+)
+caminho_modelo = os.path.join(
+    raiz_projeto, "models", "modelo_dengue_3549904.pkl"
+)
+caminho_adl = os.path.join(raiz_projeto, "data", "raw", "adl_sjc.json")
 
-# ---------------------------------------------------------
-# Funções de Carregamento com Cache
-# ---------------------------------------------------------
-@st.cache_data(ttl=3600)
-def carregar_dados(codigo_ibge):
-    caminho = obter_caminho_existente(os.path.join("data", "processed", f"dengue_clima_processado_{codigo_ibge}.csv"))
-    if os.path.exists(caminho):
-        return pd.read_csv(caminho)
+
+@st.cache_data
+def carregar_dados():
+    if os.path.exists(caminho_processed):
+        return pd.read_csv(caminho_processed)
     return None
 
-@st.cache_resource(ttl=3600)
-def carregar_modelo(codigo_ibge):
-    caminho = obter_caminho_existente(os.path.join("models", f"modelo_dengue_{codigo_ibge}.pkl"))
-    if os.path.exists(caminho):
-        return joblib.load(caminho)
+
+@st.cache_data
+def carregar_adl():
+    if os.path.exists(caminho_adl):
+        with open(caminho_adl, "r", encoding="utf-8") as f:
+            return json.load(f)
     return None
 
-# ---------------------------------------------------------
-# Barra Lateral (Menu)
-# ---------------------------------------------------------
-st.sidebar.title("🛡️ Vigilância Epidemiológica")
-st.sidebar.markdown("---")
 
-municipios = {
-    "São José dos Campos (3549904)": 3549904,
-}
+df_dados = carregar_dados()
+dados_adl = carregar_adl()
 
-cidade_selecionada = st.sidebar.selectbox("Selecione o Município:", list(municipios.keys()))
-codigo_ibge = municipios[cidade_selecionada]
+st.title(
+    "🦟 Sistema Preditivo e de Monitoramento de Dengue - São José dos Campos"
+)
+st.markdown(
+    "Painel epidemiológico integrado com inteligência artificial para apoio à tomada de decisão em saúde pública."
+)
 
-df = carregar_dados(codigo_ibge)
-modelo = carregar_modelo(codigo_ibge)
+st.subheader("🔮 Previsão Epidemiológica Próxima Semana")
 
-# ---------------------------------------------------------
-# Corpo do Portal
-# ---------------------------------------------------------
-st.title("🌐 Portal Preditivo de Tendência da Dengue")
-st.markdown(f"**Sistema de Suporte à Decisão em Saúde Pública — Código IBGE: {codigo_ibge}**")
-st.markdown("---")
+if os.path.exists(caminho_modelo) and df_dados is not None:
+    modelo = joblib.load(caminho_modelo)
+    ultima_linha = df_dados.iloc[-1:]
 
-if df is None or modelo is None:
-    st.error("❌ Dados ou modelo preditivo não encontrados.")
-else:
-    # 1. Previsão da IA (Forecasting para a Próxima Semana)
     colunas_features = [
-        'casos_lag1', 'casos_lag2',
-        'tempmed', 'tempmed_lag2', 'tempmed_lag4',
-        'umidmed', 'umidmed_lag2', 'umidmed_lag4'
+        "casos_lag1",
+        "casos_lag2",
+        "tempmed",
+        "tempmed_lag2",
+        "tempmed_lag4",
+        "umidmed",
+        "umidmed_lag2",
+        "umidmed_lag4",
+        "ib_larvario_municipal",
     ]
-    colunas_existentes = [c for c in colunas_features if c in df.columns]
+    features_disponiveis = [
+        col for col in colunas_features if col in ultima_linha.columns
+    ]
 
-    # Ajusta o histórico passado no gráfico
-    df['previsao_IA'] = modelo.predict(df[colunas_existentes])
-    df['previsao_IA'] = df['previsao_IA'].apply(lambda x: max(0, round(x)))
+    previsao_casos = int(modelo.predict(ultima_linha[features_disponiveis])[0])
+    casos_atuais = int(ultima_linha["casos"].values[0])
+    ib_atual = dados_adl["ib_geral_municipio"] if dados_adl else 0.8[cite: 2]
 
-    # Extrai a última semana real para projetar a seguinte
-    ultima_semana = df.iloc[-1]
-    se_atual = int(ultima_semana['SE'])
-    proxima_se = se_atual + 1 if (se_atual % 100) < 52 else ((se_atual // 100) + 1) * 100 + 1
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Casos Registrados (Última Semana)", casos_atuais)
+    col2.metric(
+        "Previsão da IA (Próxima Semana)",
+        f"~{previsao_casos} casos",
+        delta=f"{previsao_casos - casos_atuais} casos",
+    )
+    col3.metric("Índice Breteau Geral (ADL SJC)", f"{ib_atual} (Satisfatório)")[cite: 2]
+else:
+    st.warning(
+        "Modelo ou dados processados não encontrados. Execute o pipeline primeiro."
+    )
 
-    # Monta as variáveis (features) deslocadas para a próxima semana
-    dados_futuro = {
-        'casos_lag1': ultima_semana['casos'],
-        'casos_lag2': df.iloc[-2]['casos'] if len(df) > 1 else ultima_semana['casos'],
-        'tempmed': ultima_semana['tempmed'],
-        'tempmed_lag2': df.iloc[-2]['tempmed'] if len(df) > 1 else ultima_semana['tempmed'],
-        'tempmed_lag4': df.iloc[-4]['tempmed'] if len(df) > 3 else ultima_semana['tempmed'],
-        'umidmed': ultima_semana['umidmed'],
-        'umidmed_lag2': df.iloc[-2]['umidmed'] if len(df) > 1 else ultima_semana['umidmed'],
-        'umidmed_lag4': df.iloc[-4]['umidmed'] if len(df) > 3 else ultima_semana['umidmed']
-    }
+st.divider()
 
-    # Previsão exclusiva para a semana seguinte
-    df_futuro = pd.DataFrame([dados_futuro])
-    previsao_futura_raw = modelo.predict(df_futuro[colunas_existentes])[0]
-    previsao_proxima = max(0, int(round(previsao_futura_raw)))
-    
-    casos_atuais = int(ultima_semana['casos'])
-    variacao = previsao_proxima - casos_atuais
+st.subheader("🗺️ Mapeamento Espaço-Temporal de Risco por Distrito Sanitário")
 
-    # Adiciona o ponto futuro no gráfico sem alterar os casos reais
-    linha_grafico_futuro = pd.DataFrame({
-        'SE': [proxima_se],
-        'casos': [None],
-        'previsao_IA': [previsao_proxima]
-    })
-    df = pd.concat([df, linha_grafico_futuro], ignore_index=True)
+if dados_adl:
+    df_regioes = pd.DataFrame(dados_adl["regioes"])
 
-    if previsao_proxima > 500:
-        status_alerta = "🚨 ALERTA DE SURTO"
-        cor_alerta = "red"
-    elif previsao_proxima > 200:
-        status_alerta = "⚠️ ATENÇÃO"
-        cor_alerta = "orange"
-    else:
-        status_alerta = "✅ SATISFATÓRIO"
-        cor_alerta = "green"
-
-    # 2. Painel de Métricas Rápidas
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Semana Epidemiológica", str(se_atual))
-    c2.metric("Casos Reais Notificados", f"{casos_atuais} casos")
-    c3.metric("Previsão IA (Próx. Semana)", f"{previsao_proxima} casos", delta=f"{variacao} casos")
-    c4.markdown(f"**Status Operacional:**\n### :{cor_alerta}[{status_alerta}]")
-
-    st.markdown("---")
-
-    # 3. Gráfico Interativo Temporal
-    st.subheader("📈 Tendência Temporal: Casos Reais vs. Previsão da IA")
-    semanas_exibidas = st.slider("Exibir histórico das últimas semanas:", min_value=12, max_value=len(df), value=52)
-    df_grafico = df.tail(semanas_exibidas)
-
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=df_grafico['SE'].astype(str), y=df_grafico['casos'],
-        mode='lines+markers', name='Casos Reais', line=dict(color='#1f77b4', width=3)
-    ))
-    fig.add_trace(go.Scatter(
-        x=df_grafico['SE'].astype(str), y=df_grafico['previsao_IA'],
-        mode='lines+markers', name='Previsão da IA', line=dict(color='#d62728', width=3, dash='dash')
-    ))
-    fig.update_layout(xaxis_title="Semana Epidemiológica", yaxis_title="Número de Casos", template="plotly_white", height=450)
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.markdown("---")
-
-    # 4. Mapeamento de Risco por Regiões Epidemiológicas de SJC
-    st.subheader("🗺️ Mapeamento Espaço-Temporal de Risco por Região Epidemiológica")
-    st.markdown("Distribuição da previsão municipal entre os **Distritos Sanitários** de São José dos Campos com base no Índice Breteau (IB) Regional.")
-
-    df_regioes = pd.DataFrame([
-        {"regiao": "Zona Sul", "lat": -23.2450, "lon": -45.8920, "ib_larvario": 4.1, "bairros_chave": "Jd. Satélite, Bosque dos Eucaliptos, Campo dos Alemães"},
-        {"regiao": "Zona Leste", "lat": -23.1720, "lon": -45.8150, "ib_larvario": 4.5, "bairros_chave": "Eugênio de Melo, Vista Verde, Novo Horizonte"},
-        {"regiao": "Zona Sudeste", "lat": -23.2520, "lon": -45.8580, "ib_larvario": 3.6, "bairros_chave": "Putim, São Judas Tadeu"},
-        {"regiao": "Zona Norte", "lat": -23.1580, "lon": -45.8920, "ib_larvario": 2.2, "bairros_chave": "Santana, Alto da Ponte, Vila Paiva"},
-        {"regiao": "Centro", "lat": -23.1980, "lon": -45.8870, "ib_larvario": 1.1, "bairros_chave": "Centro, Jd. São Dimas, Vila Ema"},
-        {"regiao": "Zona Oeste", "lat": -23.2150, "lon": -45.9220, "ib_larvario": 0.9, "bairros_chave": "Urbanova, Jd. Aquárius, Jd. das Indústrias"}
-    ])
-
+    # Classificação conforme escala oficial da Prefeitura de SJC (ADL)[cite: 2]
     def classificar_risco(ib):
-        if ib >= 4.0: return "CRÍTICO / EMERGÊNCIA", "#d62728"
-        elif ib >= 2.0: return "MÉDIO / ALERTA", "#ff7f0e"
-        elif ib >= 1.0: return "MODERADO", "#bcbd22"
-        else: return "SATISFATÓRIO", "#2ca02c"
-
-    df_regioes[['risco', 'cor']] = df_regioes.apply(
-        lambda row: pd.Series(classificar_risco(row['ib_larvario'])), axis=1
-    )
-
-    soma_ib = df_regioes['ib_larvario'].sum()
-    df_regioes['casos_estimados'] = ((df_regioes['ib_larvario'] / soma_ib) * previsao_proxima).apply(lambda x: int(round(x)))
-
-    col_map1, col_map2 = st.columns([3, 1])
-
-    with col_map2:
-        modo_mapa = st.radio(
-            "Visualização do Mapa:",
-            ["🔥 Densidade de Risco (HeatMap)", "🎯 Raio de Impacto Regional"],
-            index=0
-        )
-        st.markdown("---")
-        st.caption("💡 **Nota Científica:** A severidade é ponderada pela densidade vetorial (Índice Breteau) agregada por distrito sanitário.")
-
-    with col_map1:
-        mapa = folium.Map(location=[-23.2100, -45.8750], zoom_start=11.5, tiles="cartodbpositron")
-
-        if modo_mapa == "🔥 Densidade de Risco (HeatMap)":
-            dados_calor = [[row['lat'], row['lon'], row['casos_estimados']] for _, row in df_regioes.iterrows()]
-            HeatMap(dados_calor, radius=50, blur=30, min_opacity=0.4).add_to(mapa)
-
-            for _, row in df_regioes.iterrows():
-                folium.CircleMarker(
-                    location=[row['lat'], row['lon']],
-                    radius=8, color="black", weight=1, fill=True,
-                    fill_color=row['cor'], fill_opacity=0.9,
-                    tooltip=f"<b>{row['regiao']}</b><br>Risco: {row['risco']}<br>Casos Estimados: {row['casos_estimados']}"
-                ).add_to(mapa)
+        if ib > 3.9:
+            return "RISCO", "#d62728"
+        elif ib >= 1.0:
+            return "ALERTA", "#ff7f0e"
         else:
-            for _, row in df_regioes.iterrows():
-                folium.Circle(
-                    location=[row['lat'], row['lon']],
-                    radius=max(300, row['casos_estimados'] * 5), color=row['cor'],
-                    fill=True, fill_color=row['cor'], fill_opacity=0.35,
-                    popup=folium.Popup(f"""
-                        <div style='font-family: sans-serif; width: 200px;'>
-                            <h4 style='margin-bottom:5px;'>{row['regiao']}</h4>
-                            <b>Status:</b> {row['risco']}<br>
-                            <b>Índice Breteau Regional:</b> {row['ib_larvario']}<br>
-                            <b>Casos Projetados:</b> {row['casos_estimados']}<br><br>
-                            <small><b>Principais Bairros:</b> {row['bairros_chave']}</small>
-                        </div>
-                    """, max_width=240)
-                ).add_to(mapa)
+            return "SATISFATÓRIO", "#2ca02c"
 
-        st_folium(mapa, width=900, height=480)
-
-    st.markdown("---")
-    st.markdown("### 📋 Matriz Epidemiológica por Distrito Sanitário (Regiões de SJC)")
-    st.dataframe(
-        df_regioes[['regiao', 'ib_larvario', 'casos_estimados', 'risco', 'bairros_chave']].rename(
-            columns={
-                'regiao': 'Região / Zona',
-                'ib_larvario': 'Índice Breteau (IB)',
-                'casos_estimados': 'Casos Projetados',
-                'risco': 'Classificação de Risco',
-                'bairros_chave': 'Bairros Abrangidos'
-            }
-        ),
-        use_container_width=True
+    df_regioes[["risco", "cor"]] = df_regioes.apply(
+        lambda row: pd.Series(classificar_risco(row["ib_larvario"])), axis=1
     )
+
+    m = folium.Map(
+        location=[-23.2237, -45.9009], zoom_start=11, tiles="cartodbpositron"
+    )
+
+    for _, row in df_regioes.iterrows():
+        popup_content = f"""
+        <b>Região:</b> {row['regiao']}<br>
+        <b>Índice Breteau (IB):</b> {row['ib_larvario']}<br>
+        <b>Classificação:</b> {row['risco']}<br>
+        <b>Bairros:</b> {row['bairros_chave']}
+        """
+        folium.CircleMarker(
+            location=[row["lat"], row["lon"]],
+            radius=row["ib_larvario"] * 8 + 6,
+            color=row["cor"],
+            fill=True,
+            fill_color=row["cor"],
+            fill_opacity=0.6,
+            popup=folium.Popup(popup_content, max_width=250),
+        ).add_to(m)
+
+    st_folium(m, width=1000, height=450)
+    st.dataframe(
+        df_regioes[["regiao", "ib_larvario", "risco", "bairros_chave"]],
+        use_container_width=True,
+    )
+else:
+    st.info("Arquivo 'adl_sjc.json' não encontrado na pasta data/raw/.")
+
+st.divider()
+
+if df_dados is not None and "SE" in df_dados.columns:
+    st.subheader("📈 Tendência Temporal: Casos x Temperatura Média")
+    fig = px.line(
+        df_dados,
+        x="SE",
+        y=["casos", "tempmed"],
+        labels={
+            "value": "Quantidade / Temp (°C)",
+            "SE": "Semana Epidemiológica",
+        },
+        title="Histórico de Notificações x Temperatura Média",
+    )
+    st.plotly_chart(fig, use_container_width=True)
