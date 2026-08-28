@@ -1,12 +1,49 @@
 {
   "ultima_atualizacao": "2026-07",
+  "fonte": "Vigilancia Entomologica - SJC",
   "ib_geral_municipio": 0.8,
   "regioes": [
-    {"regiao": "Zona Sul", "ib_larvario": 0.35, "lat": -23.2450, "lon": -45.8920, "bairros_chave": "Jd. Satélite, Bosque dos Eucaliptos, Campo dos Alemães"},
-    {"regiao": "Zona Leste", "ib_larvario": 1.29, "lat": -23.1720, "lon": -45.8150, "bairros_chave": "Eugênio de Melo, Vista Verde, Novo Horizonte"},
-    {"regiao": "Zona Sudeste", "ib_larvario": 1.15, "lat": -23.2520, "lon": -45.8580, "bairros_chave": "Putim, São Judas Tadeu"},
-    {"regiao": "Zona Norte", "ib_larvario": 0.58, "lat": -23.1580, "lon": -45.8920, "bairros_chave": "Santana, Alto da Ponte, Vila Paiva"},
-    {"regiao": "Centro", "ib_larvario": 0.30, "lat": -23.1980, "lon": -45.8870, "bairros_chave": "Centro, Jd. São Dimas, Vila Ema"},
-    {"regiao": "Zona Oeste", "ib_larvario": 0.38, "lat": -23.2150, "lon": -45.9220, "bairros_chave": "Urbanova, Jd. Aquárius, Jd. das Indústrias"}
+    {
+      "regiao": "Zona Sul",
+      "ib_larvario": 0.35,
+      "lat": -23.2450,
+      "lon": -45.8920,
+      "bairros_chave": "Jd. Satélite, Bosque dos Eucaliptos, Campo dos Alemães"
+    },
+    {
+      "regiao": "Zona Leste",
+      "ib_larvario": 1.29,
+      "lat": -23.1720,
+      "lon": -45.8150,
+      "bairros_chave": "Eugênio de Melo, Vista Verde, Novo Horizonte"
+    },
+    {
+      "regiao": "Zona Sudeste",
+      "ib_larvario": 1.15,
+      "lat": -23.2520,
+      "lon": -45.8580,
+      "bairros_chave": "Putim, São Judas Tadeu"
+    },
+    {
+      "regiao": "Zona Norte",
+      "ib_larvario": 0.58,
+      "lat": -23.1580,
+      "lon": -45.8920,
+      "bairros_chave": "Santana, Alto da Ponte, Vila Paiva"
+    },
+    {
+      "regiao": "Centro",
+      "ib_larvario": 0.30,
+      "lat": -23.1980,
+      "lon": -45.8870,
+      "bairros_chave": "Centro, Jd. São Dimas, Vila Ema"
+    },
+    {
+      "regiao": "Zona Oeste",
+      "ib_larvario": 0.38,
+      "lat": -23.2150,
+      "lon": -45.9220,
+      "bairros_chave": "Urbanova, Jd. Aquárius, Jd. das Indústrias"
+    }
   ]
 }
