@@ -76,7 +76,7 @@ if os.path.exists(caminho_modelo) and df_dados is not None:
 
     previsao_casos = int(modelo.predict(ultima_linha[features_disponiveis])[0])
     casos_atuais = int(ultima_linha["casos"].values[0])
-    ib_atual = dados_adl["ib_geral_municipio"] if dados_adl else 0.8[cite: 2]
+    ib_atual = dados_adl["ib_geral_municipio"] if dados_adl else 0.8
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Casos Registrados (Última Semana)", casos_atuais)
@@ -85,7 +85,7 @@ if os.path.exists(caminho_modelo) and df_dados is not None:
         f"~{previsao_casos} casos",
         delta=f"{previsao_casos - casos_atuais} casos",
     )
-    col3.metric("Índice Breteau Geral (ADL SJC)", f"{ib_atual} (Satisfatório)")[cite: 2]
+    col3.metric("Índice Breteau Geral (ADL SJC)", f"{ib_atual} (Satisfatório)")
 else:
     st.warning(
         "Modelo ou dados processados não encontrados. Execute o pipeline primeiro."
@@ -98,7 +98,6 @@ st.subheader("🗺️ Mapeamento Espaço-Temporal de Risco por Distrito Sanitár
 if dados_adl:
     df_regioes = pd.DataFrame(dados_adl["regioes"])
 
-    # Classificação conforme escala oficial da Prefeitura de SJC (ADL)[cite: 2]
     def classificar_risco(ib):
         if ib > 3.9:
             return "RISCO", "#d62728"
